@@ -1,0 +1,88 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+source("dtm2.r")
+twittertrain <- read.csv("train.csv")
+twittertest <- read.csv("test.csv")
+
+tweetall <- c(twittertrain$tweet,twittertest$tweet)
+
+dtm <- dtmexp(tweetall)
+# mean <- apply(dtm, 2, mean)
+# std <- apply(dtm, 2, sd)
+# dtm <- scale(dtm, center = mean, scale = std)
+
+trainrows <- dim(twittertrain)[1]
+
+training.x <- dtm[1:trainrows, ]
+training.x <- data.matrix(training.x)
+
+testrowstart <- trainrows+1
+testrows <- trainrows+dim(twittertest)[1]
+
+testing.x <- dtm[testrowstart:testrows, ]
+testing.x <- data.matrix(testing.x)
+
+training.y <- as.numeric(twittertrain$sentiment)
+#testing.y <-  as.numeric(twittertest$sentiment)
+```
+```{r}
+dim(training.x)
+dim(testing.x)
+
+
+#testing.y
+```
+
+
+
+```{r}
+# library(caTools)
+# 
+# 
+# 
+# set.seed(123)
+# spl <- sample.split(twitter$sentiment,SplitRatio = 0.7)
+# 
+# training.x <- subset(dtm,spl==TRUE)
+# training.x <- data.matrix(training.x)
+# 
+# testing.x <- subset(dtm,spl==FALSE)
+# testing.x <- data.matrix(testing.x)
+# 
+# training.y <- as.numeric(subset(twitter$sentiment,spl==TRUE))
+# testing.y <-  as.numeric(subset(twitter$sentiment,spl==FALSE))
+```
+
+```{r}
+library(keras)
+model <- keras_model_sequential() %>%
+  layer_dense(units = 20, activation = "relu", input_shape = NULL) %>%
+  layer_dense(units = 15, activation = "relu") %>%
+  layer_dense(units = 4, activation = "softmax")
+
+model %>% compile(
+  optimizer = "SGD",
+  loss = "sparse_categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+history <- model %>% fit(
+  training.x,
+  training.y,
+  epochs = 100,
+  batch_size = 100,
+)
+```
+
+
+```{r}
+testing.predict <- predict_classes(model, x = testing.x, verbose = 1)
+twittertest['sentiment'] <- testing.predict
+twittertest <- subset (twittertest, select = -tweet)
+write.csv(twittertest, "output_dtmmod3.csv", row.names = FALSE)
+
+```
